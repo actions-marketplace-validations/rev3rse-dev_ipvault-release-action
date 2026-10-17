@@ -1,0 +1,106 @@
+name: IP Vault release
+description: >-
+  Seal your app's models, data and content on this runner and register them with IP Vault, so
+  only licensed installs can open them. The plaintext never leaves the runner.
+author: rev3rse.dev
+branding:
+  icon: lock
+  color: gray-dark
+
+inputs:
+  manifest:
+    description: The release manifest (ipvault.toml) declaring each asset, its plaintext source and its sealed output.
+    default: ipvault.toml
+  token:
+    description: >-
+      The app's IP Vault CI token, from a repository or environment secret
+      (token: secrets.IPVAULT_TOKEN, in an expression). Not needed with OIDC: grant the job
+      `permissions: id-token: write` and bind this repository to the app instead. Not needed to
+      verify. Pull requests from forks receive neither, and this action refuses to publish from
+      one.
+    default: ""
+  verify:
+    description: >-
+      Instead of publishing, check this built package (APK, AAB, AAR, ZIP or a directory): every
+      sealed output is in it and no plaintext input is, whole or in part. No token is needed.
+    default: ""
+  receipt:
+    description: With verify, the receipt the publishing step wrote (its receipt output). Without it, the sealed files on disk are expected.
+    default: ""
+  server:
+    description: The IP Vault key service.
+    default: https://vault.rev3rse.dev
+  audience:
+    description: With OIDC, the audience the job's token is requested for. Default the server URL, which is what the server expects.
+    default: ""
+  operation-id:
+    description: Names this release attempt. Derived from the run, its attempt and the job by default; a re-run is a new attempt.
+    default: ""
+  max-bytes:
+    description: With verify, total bytes to read out of archives, e.g. 4GiB (the zip-bomb budget).
+    default: 4GiB
+  version:
+    description: >-
+      ipvault CLI version to download. Its checksums must be pinned in this version of the
+      action (checksums.txt), so pin the action by commit SHA and the binary is pinned with it.
+    default: "0.1.0"
+  ipvault-path:
+    description: Use this ipvault binary instead of downloading one (one you built, or for testing the action).
+    default: ""
+  download-repo:
+    description: >-
+      Download the pinned archive from this repository's GitHub release (owner/name) with
+      github-token, instead of the public release: for a private mirror. The checksum still decides.
+    default: ""
+  github-token:
+    description: Token for download-repo. Unused for the public release.
+    default: ${{ github.token }}
+
+outputs:
+  release-id:
+    description: The committed release (publish).
+    value: ${{ steps.run.outputs.release-id }}
+  receipt:
+    description: Path to the release receipt JSON (publish). Pass it to the verify step.
+    value: ${{ steps.run.outputs.receipt }}
+  passed:
+    description: '"true" if the package check passed (verify).'
+    value: ${{ steps.run.outputs.passed }}
+  exit-code:
+    description: 0 success; 1 the package check failed (verify); 2 error or refusal.
+    value: ${{ steps.run.outputs.exit-code }}
+  report:
+    description: Path to the JSON report.
+    value: ${{ steps.run.outputs.report }}
+  junit:
+    description: Path to the JUnit XML report.
+    value: ${{ steps.run.outputs.junit }}
+
+runs:
+  using: composite
+  steps:
+    # Inputs reach the scripts only as environment variables, never interpolated into shell.
+    - id: install
+      shell: bash
+      env:
+        IPVAULT_VERSION: ${{ inputs.version }}
+        IPVAULT_PATH: ${{ inputs.ipvault-path }}
+        IPVAULT_DOWNLOAD_REPO: ${{ inputs.download-repo }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: '"$GITHUB_ACTION_PATH/install.sh"'
+    - id: run
+      shell: bash
+      env:
+        IPVAULT_BIN: ${{ steps.install.outputs.bin }}
+        IPVAULT_TOKEN: ${{ inputs.token }}
+        IPVAULT_SERVER: ${{ inputs.server }}
+        IPVAULT_AUDIENCE: ${{ inputs.audience }}
+        MANIFEST: ${{ inputs.manifest }}
+        VERIFY_PACKAGE: ${{ inputs.verify }}
+        RECEIPT: ${{ inputs.receipt }}
+        OPERATION_ID: ${{ inputs.operation-id }}
+        MAX_BYTES: ${{ inputs.max-bytes }}
+        EVENT_NAME: ${{ github.event_name }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        BASE_REPO: ${{ github.repository }}
+      run: '"$GITHUB_ACTION_PATH/release.sh"'

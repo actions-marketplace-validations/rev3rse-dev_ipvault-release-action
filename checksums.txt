@@ -1,0 +1,11 @@
+# SHA-256 of each ipvault release archive this version of the action may download.
+# Written by ci/pin-release.py from a release's SHA256SUMS; never edited by hand.
+# An archive not listed here is refused.
+863a16cd18991f26116da537c7363ee07b6fe5cdd1323988cc9f131d06774c71  ipvault-0.0.1-aarch64-apple-darwin.tar.gz
+d7dbf62e12dac52da3d8f04a7c6a34de491dbc269e8f6c171b7bf0525b174edb  ipvault-0.0.1-aarch64-unknown-linux-musl.tar.gz
+94e46ca42194c6008ce49fd5186d7b0a05d6841dc34af6e987634a6bb51412d4  ipvault-0.0.1-x86_64-apple-darwin.tar.gz
+250feebfe5151c1bb5ecbbe40225a3d764d8b0053aeab70c341352a2afd86ca8  ipvault-0.0.1-x86_64-unknown-linux-musl.tar.gz
+df607b687718304f146cd3d10d263d0eadbf94a5ffd1a05b273b1760f86260d7  ipvault-0.1.0-aarch64-apple-darwin.tar.gz
+2e15fea4ae5bcd804150b0627204095539930fbb58ccfca707f5e7b1ebfadaa9  ipvault-0.1.0-aarch64-unknown-linux-musl.tar.gz
+da82859e61d7f50ad6441da6f8b680bde2c5591ac2fe61159e667367ff85a68f  ipvault-0.1.0-x86_64-apple-darwin.tar.gz
+6851005905e89080eda704445ec621f1a6feee1cc4d73d76701ad5b8ce9454a8  ipvault-0.1.0-x86_64-unknown-linux-musl.tar.gz
