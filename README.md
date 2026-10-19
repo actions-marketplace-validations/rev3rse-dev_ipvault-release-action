@@ -1,8 +1,9 @@
 # IP Vault release: GitHub Action
 
 Seals your app's models, data and content on the runner and registers them with IP Vault, so
-only licensed installs can open them. The plaintext never leaves the runner: the service receives
-each asset's key wrapped to your tenant's ingestion key, and the sealed file's hash and size.
+only licensed installs can open them. The plaintext never leaves the runner, and your app's key
+never leaves the service: the run receives each file's own key, wrapped to a one-time key it
+makes, and the service receives the sealed file's hash and size.
 
 ```yaml
 on:
@@ -35,6 +36,7 @@ version = 1
 [app]
 platform = "android"
 id = "com.acme.vitals"
+tenant = "t-..."                         # your workspace's tenant, from the IP Vault console
 
 [[asset]]
 id = "model:vitals"                      # what the app opens
@@ -50,26 +52,35 @@ entitlements = ["premium"]               # licences of these entitlements can op
 
 **OIDC (recommended).** With `id-token: write`, the runner gives the job a short-lived token,
 signed by GitHub, naming its repository, ref, environment and workflow. IP Vault admits it only
-through a **binding** your operator makes once per app and repository: the repository and its
-owner by numeric id (names change on rename and can be registered again by someone else), the
-refs that may publish (exact, or a prefix such as `refs/tags/v*`), and optionally an environment
-and the workflow (`job_workflow_ref`). There is no secret to store, rotate or leak.
+through a **binding** you make once per app and repository in the IP Vault console, by the
+repository's name. The binding holds the repository and its owner by numeric id (names change on
+rename and can be registered again by someone else): a public repository's are read from GitHub
+when you bind it; a private one's are taken from its first run, which must name your tenant in
+the manifest (`tenant` under `[app]`). It also names the refs that may publish (exact, or a
+prefix such as `refs/tags/v*`), and optionally an environment and the workflow
+(`job_workflow_ref`). There is no secret to store, rotate or leak.
 
 **A CI token**, for runners without OIDC: set `token: ${{ secrets.IPVAULT_TOKEN }}`. It takes
 precedence when set.
 
 ## What publishing does
 
-1. **Begin.** The service reserves a new key version for each asset (it allocates versions; a
-   reserved version is never reused) and returns your tenant's ingestion public key.
-2. **Seal, here.** Each asset gets a fresh key, is sealed to its output path, and the key is
-   wrapped to the ingestion key. The raw key never touches disk.
-3. **Register.** The wrapped keys and the sealed files' hashes are committed in one transaction,
-   with grants added to the named entitlements. Grants are only added: licences for builds you
-   already shipped keep working.
+1. **Begin.** The run makes a one-time key pair and sends its public half. IP Vault keeps one
+   key for your app, made when the app gets its first CI credential and never sent anywhere. For
+   each asset it picks a fresh salt, derives the file's own key from the app's key, and returns
+   that key wrapped to the run's one-time key.
+2. **Seal, here.** Each asset is sealed under its own key to its output path. The keys stay in
+   memory and never touch disk.
+3. **Register.** The sealed files' hashes are committed in one transaction. The app's key is
+   granted to the named entitlements once, so a licence opens every release of the app, and
+   releases add no grants.
+
+An asset with `mode = "H"` (Keystore secure import) gets a key of its own instead, a new version
+per release, wrapped to your tenant's ingestion key; registering it adds its grant. Grants are
+only added: licences for builds you already shipped keep working.
 
 Every call is idempotent. A repeated step resumes the same release with the same sealed files;
-a re-run of the job is a new attempt with fresh keys. A changed input under the same attempt is
+a re-run of the job is a new attempt, sealed afresh. A changed input under the same attempt is
 refused rather than silently re-reserved.
 
 | Input | Default | |
@@ -96,8 +107,8 @@ failed, 2 error or refusal), `report`, `junit`.
   secrets and identity next to code from the pull request. The service refuses an OIDC token
   from a `pull_request` or `pull_request_target` job whatever the binding says. Verify and scan
   need no credential and run anywhere.
-- A token or binding is app-scoped: it can publish new key versions for one app into the
-  entitlements it was created for. It cannot read a key, replace a registered version, remove a
+- A token or binding is app-scoped: it can publish releases of one app into the entitlements it
+  was created for. It cannot read a key, replace a registered version, remove a
   grant or touch another app. Both expire, and revoking one takes effect on its next request.
 - A credential reaches the CLI only as an environment variable, never as an argument, and the
   CLI hands it to `curl` on standard input. An OIDC token is requested for each call and never
