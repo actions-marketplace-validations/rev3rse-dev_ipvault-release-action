@@ -1,7 +1,8 @@
 name: IP Vault release
+# At most 125 characters: GitHub Marketplace refuses a longer description.
 description: >-
-  Seal your app's models, data and content on this runner and register them with IP Vault, so
-  only licensed installs can open them. The plaintext never leaves the runner.
+  Seal your app's models, data and content on the runner and register them with IP Vault, so
+  only licensed installs open them.
 author: rev3rse.dev
 branding:
   icon: lock
