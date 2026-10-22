@@ -125,6 +125,6 @@ untrusted, so its report is printed with workflow commands suspended.
 ---
 
 This repository is generated from `actions/release` in the IP Vault source by `ci/mirror.py`, which also
-checks a published copy byte for byte against the source at the same tag. Changes go to the
+checks a published copy byte for byte against the source at the source commit named by the release. Changes go to the
 source, not here. Pin this action by commit SHA: the commit pins the `ipvault` binary through
 `checksums.txt`.
